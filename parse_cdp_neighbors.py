@@ -1,5 +1,3 @@
-Can you re-write the following script to use telnet instead of SSH? 
-
 import re
 import csv
 import argparse
