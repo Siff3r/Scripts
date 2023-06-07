@@ -47,8 +47,8 @@ def create_snapshot(index_name, snapshot_name, auth, verify=False):
 
 def get_indices():
     # Replace with the actual username and password
-    username = 'admin'
-    password = 'Westeros'
+    username = ''
+    password = ''
 
     # URL of your Elasticsearch instance
     url = 'https://opensearch01:9200/_cat/indices?v=true&pretty'
