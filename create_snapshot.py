@@ -1,15 +1,32 @@
 import pytz
 import re
 import requests
+import smtplib
 from datetime import datetime
+from email.mime.text import MIMEText
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
-# Replace with user/pass for Opensearch
-username = ''
-password = ''
+username = 'admin'
+password = 'Westeros'
+
+def send_email(subject, body, to, gmail_user, gmail_pwd):
+    msg = MIMEText(body)
+    msg['Subject'] = subject
+    msg['From'] = gmail_user
+    msg['To'] = to
+
+    try:
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        server.ehlo()
+        server.login(gmail_user, gmail_pwd)
+        server.send_message(msg)
+        server.close()
+        print('Email sent!')
+    except Exception as e:
+        print('Failed to send email:', e)
 
 def create_snapshot(index_name, snapshot_name, auth, verify=False):
     """Creates a snapshot for the given index"""
@@ -24,16 +41,20 @@ def create_snapshot(index_name, snapshot_name, auth, verify=False):
     print(response.text)
     if response.status_code != 200:
         print(f"Failed to create snapshot for {index_name}. Status code: {response.status_code}")
+        send_email('Snapshot creation failed', f'Failed to create snapshot for {index_name}. Status code: {response.status_code}', '[recipient-email]', '[sender-email]', '[sender-password]')
         return False
     return True
 
 def get_indices():
+    # Replace with the actual username and password
+    username = 'admin'
+    password = 'Westeros'
+
     # URL of your Elasticsearch instance
     url = 'https://opensearch01:9200/_cat/indices?v=true&pretty'
 
     # Make the GET request to Elasticsearch
     response = requests.get(url, auth=(username, password), verify=False)
-    print(response.text)
     # Check that the request was successful
     if response.status_code != 200:
         print(f"Request failed with status code {response.status_code}")
@@ -79,7 +100,8 @@ def get_indices():
                     # Add the index to the list as a tuple of base name, rotation number (as an integer), and full index name
                     indices.append((base_name, int(rotation_number), creation_date_formatted, index))
 
-    # Sort the list of indices by basename and rotation number
+    # Sort the list of indices
+    # This will sort by base name first, then rotation number
     indices.sort(key=lambda x: x[1])
 
     # Return the sorted list of indices
@@ -95,3 +117,4 @@ for base_name, rotation_number, creation_date, index in indices:
     if (base_name, rotation_number, creation_date, index) not in indices_to_keep:
         if create_snapshot(index, creation_date, (username, password)):
             print(f"Created snapshot for {base_name}_{rotation_number}: {creation_date}")
+            send_email('[OpenSearch] Snapshot created successfully!', f'Snapshot created for {base_name}_{rotation_number}: {creation_date}.', '[recipient-email]', '[sender-email]', '[sender-password]')
