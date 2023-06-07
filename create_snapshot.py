@@ -63,23 +63,14 @@ def get_indices():
     # Split the response into lines
     lines = response.text.split("\n")
 
-    # Initialize an empty dictionary to store the indices and their creation date
     indices = []
 
-    # Loop over each line
     for line in lines:
-        # Split the line into words
         words = line.split()
 
-        # If the line has words and the first word is "green", it's an index
         if words and words[0] == 'green':
-            # The index name is the third word
             index = words[2]
-
-            # Extract the base name and the rotation number using a regex
             match = re.match(r"(.*?)_(\d+)", index)
-
-            # If the index name matches the pattern
             if match:
                 base_name, rotation_number = match.groups()
 
@@ -88,23 +79,17 @@ def get_indices():
                     response = requests.get(f"https://opensearch01:9200/{index}/_settings", auth=(username, password), verify=False)
                     creation_date = response.json()[index]['settings']['index']['creation_date']
 
-                    # Convert the creation date to a datetime object
+                    # Convert and format date/time of index
                     creation_date = datetime.fromtimestamp(int(creation_date) / 1000.0)
-
-                    # Convert the datetime object to the desired timezone
                     creation_date = pytz.utc.localize(creation_date).astimezone(pytz.timezone('US/Eastern'))
-
-                    # Format the datetime object as a string
                     creation_date_formatted = creation_date.strftime("%Y-%m-%d_%I%M%p").lower()
 
-                    # Add the index to the list as a tuple of base name, rotation number (as an integer), and full index name
                     indices.append((base_name, int(rotation_number), creation_date_formatted, index))
 
     # Sort the list of indices
     # This will sort by base name first, then rotation number
     indices.sort(key=lambda x: x[1])
 
-    # Return the sorted list of indices
     return indices
 
 indices = get_indices()
