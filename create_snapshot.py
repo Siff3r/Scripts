@@ -9,8 +9,8 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
-username = 'admin'
-password = 'Westeros'
+username = ''
+password = ''
 
 def send_email(subject, body, to, gmail_user, gmail_pwd):
     msg = MIMEText(body)
