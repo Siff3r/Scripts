@@ -9,8 +9,8 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
-username = '[os-username]'
-password = '[os-password]'
+username = 'opensearch_username'
+password = 'opensearch_password'
 
 def send_email(subject, body, to, gmail_user, gmail_pwd):
     msg = MIMEText(body)
@@ -41,65 +41,46 @@ def create_snapshot(index_name, snapshot_name, auth, verify=False):
     print(response.text)
     if response.status_code != 200:
         print(f"Failed to create snapshot for {index_name}. Status code: {response.status_code}")
-        send_email('Snapshot creation failed', f'Failed to create snapshot for {index_name}. Status code: {response.status_code}', '[recipient-email]', '[sender-email]', '[sender-password]')
+        send_email('Snapshot creation failed', f'Failed to create snapshot for {index_name}. Status code: {response.status_code}', 'recipient_email@gmail.com', 'sender_email@gmail.com', 'sender_password')
         return False
     return True
 
 def get_indices():
-    # Replace with the actual username and password
-    username = 'os-username'
-    password = 'os-password'
-
-    # URL of your Elasticsearch instance
     url = 'https://opensearch01:9200/_cat/indices?v=true&pretty'
-
-    # Make the GET request to Elasticsearch
     response = requests.get(url, auth=(username, password), verify=False)
-    # Check that the request was successful
+
     if response.status_code != 200:
         print(f"Request failed with status code {response.status_code}")
         return
 
-    # Split the response into lines
     lines = response.text.split("\n")
-
     indices = []
 
     for line in lines:
         words = line.split()
-
         if words and words[0] == 'green':
             index = words[2]
             match = re.match(r"(.*?)_(\d+)", index)
+
             if match:
                 base_name, rotation_number = match.groups()
 
                 if base_name == 'firewall':
-                    # Get the creation date of the index
                     response = requests.get(f"https://opensearch01:9200/{index}/_settings", auth=(username, password), verify=False)
                     creation_date = response.json()[index]['settings']['index']['creation_date']
-
-                    # Convert and format date/time of index
                     creation_date = datetime.fromtimestamp(int(creation_date) / 1000.0)
                     creation_date = pytz.utc.localize(creation_date).astimezone(pytz.timezone('US/Eastern'))
                     creation_date_formatted = creation_date.strftime("%Y-%m-%d_%I%M%p").lower()
-
                     indices.append((base_name, int(rotation_number), creation_date_formatted, index))
-
-    # Sort the list of indices
-    # This will sort by base name first, then rotation number
     indices.sort(key=lambda x: x[1])
 
     return indices
 
 indices = get_indices()
 
-# Keep the most recent 9 indices
 indices_to_keep = indices[-9:]
 
-# Create a snapshot for the older indices
 for base_name, rotation_number, creation_date, index in indices:
     if (base_name, rotation_number, creation_date, index) not in indices_to_keep:
         if create_snapshot(index, creation_date, (username, password)):
             print(f"Created snapshot for {base_name}_{rotation_number}: {creation_date}")
-            send_email('[OpenSearch] Snapshot created successfully!', f'Snapshot created for {base_name}_{rotation_number}: {creation_date}.', '[recipient-email]', '[sender-email]', '[sender-password]')
